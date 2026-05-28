@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string
+import streamlit as st
 import pandas as pd
 import joblib
 
@@ -7,62 +7,29 @@ import joblib
 # =========================
 model = joblib.load("telco_churn_model.pkl")
 
-app = Flask(__name__)
+# =========================
+# UI
+# =========================
+st.title("Telco Customer Churn Prediction")
+
+st.write("Enter customer details below:")
+
+tenure = st.number_input("Tenure", min_value=0)
+monthly = st.number_input("Monthly Charges", min_value=0.0, format="%.2f")
+total = st.number_input("Total Charges", min_value=0.0, format="%.2f")
 
 # =========================
-# SIMPLE HTML UI
+# PREDICT BUTTON
 # =========================
-html = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Telco Churn Predictor</title>
-</head>
-<body>
-    <h2>Telco Customer Churn Prediction</h2>
+if st.button("Predict"):
+    input_data = pd.DataFrame(
+        [[tenure, monthly, total]],
+        columns=["tenure", "MonthlyCharges", "TotalCharges"]
+    )
 
-    <form method="POST">
-        <label>Tenure:</label>
-        <input type="number" name="tenure" required><br><br>
+    result = model.predict(input_data)[0]
 
-        <label>Monthly Charges:</label>
-        <input type="number" step="0.01" name="MonthlyCharges" required><br><br>
-
-        <label>Total Charges:</label>
-        <input type="number" step="0.01" name="TotalCharges" required><br><br>
-
-        <button type="submit">Predict</button>
-    </form>
-
-    <h3>{{ prediction }}</h3>
-</body>
-</html>
-"""
-
-# =========================
-# ROUTE
-# =========================
-@app.route("/", methods=["GET", "POST"])
-def home():
-    prediction = ""
-
-    if request.method == "POST":
-        tenure = float(request.form["tenure"])
-        monthly = float(request.form["MonthlyCharges"])
-        total = float(request.form["TotalCharges"])
-
-        # IMPORTANT: match training feature order
-        input_data = pd.DataFrame([[tenure, monthly, total]],
-                                  columns=["tenure", "MonthlyCharges", "TotalCharges"])
-
-        result = model.predict(input_data)[0]
-
-        prediction = "⚠ Customer WILL CHURN" if result == 1 else "✅ Customer WILL STAY"
-
-    return render_template_string(html, prediction=prediction)
-
-# =========================
-# RUN APP
-# =========================
-if __name__ == "__main__":
-    app.run(debug=True)
+    if result == 1:
+        st.error("⚠ Customer WILL CHURN")
+    else:
+        st.success("✅ Customer WILL STAY")
